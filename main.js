@@ -23,21 +23,31 @@ function extractItems() {
 
 // Build HTML
 function buildHTML(items) {
-  let html = ``;
-
   let body = items.map(item => {
-    html += `
+    return `
       <li>
         <a href="${item.link}">${item.title}</a>
         <span>${item.duration}</span>
       </li>
     `
-    return `
+  }).join("");
+
+  let html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title>JS Bin</title>
+      </head>
+      <body>
       <ul>
-        ${html}
+        ${body}
       </ul>
-    `;
-  })
+      </body>
+    </html>
+  `;
+
 
   fs.writeFile("index.html", html, function(err) {
     if (err) throw err;
@@ -80,7 +90,7 @@ async function scrapeInfiniteScrollItems(
     await page.goto('https://pixabay.com/music'); //, {waitUntil: 'networkidle2'});
 
 
-    const items = await scrapeInfiniteScrollItems(page, extractItems, 1);
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 2);
     
     console.log({items});
 
