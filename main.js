@@ -6,22 +6,26 @@ var fs = require("fs");
 const error = chalk.bold.red;
 const success = chalk.keyword("green");
 
-// Extract scolling items
+let searchField = "span.total";
+let searchValue = "3:36";
+
+// Extract scrolling items
+
 function extractItems() {
   let anchors = [...document.querySelectorAll("a.name")];
   let spans = [...document.querySelectorAll("span.total")];
-  const items = anchors.map((anchor,i) => {
+  let items = anchors.map((anchor,i) => {
     return {
       title: anchor.textContent,
       link: anchor.getAttribute("href"),
       duration: spans[i]?.textContent
     }
   });
-
   return items;
 }
 
-// Build HTML
+
+// Build HTML and save to disk
 function buildHTML(items) {
   let body = items.map(item => {
     return `
@@ -55,6 +59,7 @@ function buildHTML(items) {
   });
 }
 
+// Setup Infinite scroll handler
 async function scrapeInfiniteScrollItems(
   page,
   extractItems,
@@ -66,10 +71,11 @@ async function scrapeInfiniteScrollItems(
     let previousHeight;
     while (items.length < itemTargetCount) {
       items = await page.evaluate(extractItems);
+      items = items.filter(itm => itm.duration == searchValue);
       previousHeight = await page.evaluate('document.body.scrollHeight');
       await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
       await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
-      await page.waitFor(scrollDelay);
+      await page.waitForTimeout(scrollDelay);
     }
   } catch(e) { }
   return items;
@@ -82,6 +88,7 @@ async function scrapeInfiniteScrollItems(
     var browser = await puppeteer.launch({ headless: false });
     // open a new page
     var page = await browser.newPage();
+    page.setViewport({ width: 1280, height: 926 });
     // enter url in page
     // https://pixabay.com/music
     // https://news.ycombinator.com/news
@@ -90,18 +97,17 @@ async function scrapeInfiniteScrollItems(
     await page.goto('https://pixabay.com/music'); //, {waitUntil: 'networkidle2'});
 
 
-    const items = await scrapeInfiniteScrollItems(page, extractItems, 2);
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 5);
     
     console.log({items});
 
     await browser.close();
     // Writing the news inside a json file
-    fs.writeFile("pixabay.json", JSON.stringify(items), function(err) {
-      if (err) throw err;
-      console.log("Saved!");
-    });
+    // fs.writeFile("pixabay.json", JSON.stringify(items), function(err) {
+    //   if (err) throw err;
+    //   console.log("Saved!");
+    // });
     console.log(success("Browser Closed"));
-
 
     // Build HTML
     buildHTML(items);
