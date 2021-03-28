@@ -6,7 +6,7 @@ var fs = require("fs");
 const error = chalk.bold.red;
 const success = chalk.keyword("green");
 
-
+// Extract scolling items
 function extractItems() {
   let anchors = [...document.querySelectorAll("a.name")];
   let spans = [...document.querySelectorAll("span.total")];
@@ -19,6 +19,30 @@ function extractItems() {
   });
 
   return items;
+}
+
+// Build HTML
+function buildHTML(items) {
+  let html = ``;
+
+  let body = items.map(item => {
+    html += `
+      <li>
+        <a href="${item.link}">${item.title}</a>
+        <span>${item.duration}</span>
+      </li>
+    `
+    return `
+      <ul>
+        ${html}
+      </ul>
+    `;
+  })
+
+  fs.writeFile("index.html", html, function(err) {
+    if (err) throw err;
+    console.log("Saved!");
+  });
 }
 
 async function scrapeInfiniteScrollItems(
@@ -55,23 +79,8 @@ async function scrapeInfiniteScrollItems(
     //page.setUserAgent(`'User-Agent','Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36`);
     await page.goto('https://pixabay.com/music'); //, {waitUntil: 'networkidle2'});
 
-    // await page.waitForNavigation({
-    //   waitUntil: 'networkidle0',
-    // });
-    
-    // var data = await page.evaluate(() => {
-    //   let anchors = [...document.querySelectorAll("a.name")];
-    //   let spans = [...document.querySelectorAll("span.total")];
-    //   return anchors.map((anchor,i) => {
-    //     return {
-    //       title: anchor.textContent,
-    //       link: anchor.getAttribute("href"),
-    //       duration: spans[i]?.textContent
-    //     }
-    //   });
-    // })
 
-    const items = await scrapeInfiniteScrollItems(page, extractItems, 100);
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 1);
     
     console.log({items});
 
@@ -82,6 +91,11 @@ async function scrapeInfiniteScrollItems(
       console.log("Saved!");
     });
     console.log(success("Browser Closed"));
+
+
+    // Build HTML
+    buildHTML(items);
+
   } catch (err) {
     // Catch and display errors
     console.log(error(err));
