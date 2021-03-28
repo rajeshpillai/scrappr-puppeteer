@@ -13,7 +13,6 @@ let runCount = 0;
 
 
 let args = process.argv.slice(2);
-console.log("ARGUMENTS: ", args);
 
 queryField = args[0] || "a.name";
 searchField = args[1] || "span.total";
