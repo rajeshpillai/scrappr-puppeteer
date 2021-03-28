@@ -7,7 +7,16 @@ const error = chalk.bold.red;
 const success = chalk.keyword("green");
 
 let searchField = "span.total";
-let searchValue = "3:36";
+let searchValue = "3:";
+
+let runCount = 0;
+
+
+let args = process.argv.slice(2);
+console.log("ARGUMENTS: ", args);
+
+searchField = args[0] || "span.total";
+searchValue = args[1] || "3:";
 
 // Extract scrolling items
 
@@ -69,13 +78,14 @@ async function scrapeInfiniteScrollItems(
   let items = [];
   try {
     let previousHeight;
-    while (items.length < itemTargetCount) {
+    while (items.length < itemTargetCount || runCount < 10) {
       items = await page.evaluate(extractItems);
-      items = items.filter(itm => itm.duration == searchValue);
+      items = items.filter(itm => itm.duration.startsWith(searchValue));
       previousHeight = await page.evaluate('document.body.scrollHeight');
       await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
       await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
       await page.waitForTimeout(scrollDelay);
+      runCount++;
     }
   } catch(e) { }
   return items;
@@ -89,25 +99,19 @@ async function scrapeInfiniteScrollItems(
     // open a new page
     var page = await browser.newPage();
     page.setViewport({ width: 1280, height: 926 });
-    // enter url in page
-    // https://pixabay.com/music
-    // https://news.ycombinator.com/news
 
     //page.setUserAgent(`'User-Agent','Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36`);
     await page.goto('https://pixabay.com/music'); //, {waitUntil: 'networkidle2'});
 
 
-    const items = await scrapeInfiniteScrollItems(page, extractItems, 5);
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 10);
     
     console.log({items});
 
     await browser.close();
-    // Writing the news inside a json file
-    // fs.writeFile("pixabay.json", JSON.stringify(items), function(err) {
-    //   if (err) throw err;
-    //   console.log("Saved!");
-    // });
+
     console.log(success("Browser Closed"));
+    console.log(`Run count: ${runCount}`);
 
     // Build HTML
     buildHTML(items);
