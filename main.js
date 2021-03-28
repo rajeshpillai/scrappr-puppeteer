@@ -2,12 +2,12 @@ const puppeteer = require("puppeteer");
 const chalk = require("chalk");
 var fs = require("fs");
 
-// MY OCD of colorful console.logs for debugging... IT HELPS
 const error = chalk.bold.red;
 const success = chalk.keyword("green");
 
-let searchField = "span.total";
-let searchValue = "3:";
+var queryField = "a.name";
+var searchField = "span.total";
+var searchValue = "3:";
 
 let runCount = 0;
 
@@ -15,19 +15,22 @@ let runCount = 0;
 let args = process.argv.slice(2);
 console.log("ARGUMENTS: ", args);
 
-searchField = args[0] || "span.total";
-searchValue = args[1] || "3:";
+queryField = args[0] || "a.name";
+searchField = args[1] || "span.total";
+searchValue = args[2] || "3:";
+
+console.log({queryField, searchField, searchValue});
 
 // Extract scrolling items
 
-function extractItems() {
-  let anchors = [...document.querySelectorAll("a.name")];
-  let spans = [...document.querySelectorAll("span.total")];
+function extractItems(queryField, searchField) {
+  let anchors = [...document.querySelectorAll(queryField)];
+  let spans = [...document.querySelectorAll(searchField)];
   let items = anchors.map((anchor,i) => {
     return {
       title: anchor.textContent,
       link: anchor.getAttribute("href"),
-      duration: spans[i]?.textContent
+      content: spans[i]?.textContent
     }
   });
   return items;
@@ -40,7 +43,7 @@ function buildHTML(items) {
     return `
       <li>
         <a href="${item.link}">${item.title}</a>
-        <span>${item.duration}</span>
+        <span>${item.content}</span>
       </li>
     `
   }).join("");
@@ -79,15 +82,15 @@ async function scrapeInfiniteScrollItems(
   try {
     let previousHeight;
     while (items.length < itemTargetCount || runCount < 10) {
-      items = await page.evaluate(extractItems);
-      items = items.filter(itm => itm.duration.startsWith(searchValue));
+      items = await page.evaluate(extractItems, queryField, searchField);
+      items = items.filter(itm => itm.content.startsWith(searchValue));
       previousHeight = await page.evaluate('document.body.scrollHeight');
       await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
       await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
       await page.waitForTimeout(scrollDelay);
       runCount++;
     }
-  } catch(e) { }
+  } catch(e) { console.log({e})}
   return items;
 }
 
@@ -104,7 +107,7 @@ async function scrapeInfiniteScrollItems(
     await page.goto('https://pixabay.com/music'); //, {waitUntil: 'networkidle2'});
 
 
-    const items = await scrapeInfiniteScrollItems(page, extractItems, 10);
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 5);
     
     console.log({items});
 
