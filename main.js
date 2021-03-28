@@ -6,6 +6,42 @@ var fs = require("fs");
 const error = chalk.bold.red;
 const success = chalk.keyword("green");
 
+
+function extractItems() {
+  let anchors = [...document.querySelectorAll("a.name")];
+  let spans = [...document.querySelectorAll("span.total")];
+  const items = anchors.map((anchor,i) => {
+    return {
+      title: anchor.textContent,
+      link: anchor.getAttribute("href"),
+      duration: spans[i]?.textContent
+    }
+  });
+
+  return items;
+}
+
+async function scrapeInfiniteScrollItems(
+  page,
+  extractItems,
+  itemTargetCount,
+  scrollDelay = 1000,
+) {
+  let items = [];
+  try {
+    let previousHeight;
+    while (items.length < itemTargetCount) {
+      items = await page.evaluate(extractItems);
+      previousHeight = await page.evaluate('document.body.scrollHeight');
+      await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+      await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
+      await page.waitFor(scrollDelay);
+    }
+  } catch(e) { }
+  return items;
+}
+
+
 (async () => {
   try {
     // open the headless browser
@@ -23,23 +59,25 @@ const success = chalk.keyword("green");
     //   waitUntil: 'networkidle0',
     // });
     
-    var data = await page.evaluate(() => {
-      let anchors = [...document.querySelectorAll("a.name")];
-      let spans = [...document.querySelectorAll("span.total")];
-      return anchors.map((anchor,i) => {
-        return {
-          title: anchor.textContent,
-          link: anchor.getAttribute("href"),
-          duration: spans[i]?.textContent
-        }
-      });
-    })
+    // var data = await page.evaluate(() => {
+    //   let anchors = [...document.querySelectorAll("a.name")];
+    //   let spans = [...document.querySelectorAll("span.total")];
+    //   return anchors.map((anchor,i) => {
+    //     return {
+    //       title: anchor.textContent,
+    //       link: anchor.getAttribute("href"),
+    //       duration: spans[i]?.textContent
+    //     }
+    //   });
+    // })
+
+    const items = await scrapeInfiniteScrollItems(page, extractItems, 100);
     
-    console.log({data});
+    console.log({items});
 
     await browser.close();
     // Writing the news inside a json file
-    fs.writeFile("pixabay.json", JSON.stringify(data), function(err) {
+    fs.writeFile("pixabay.json", JSON.stringify(items), function(err) {
       if (err) throw err;
       console.log("Saved!");
     });
